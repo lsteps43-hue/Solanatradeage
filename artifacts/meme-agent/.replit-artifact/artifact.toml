@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Meme Agent"
+description = "A Solana meme-market intelligence cockpit for deterministic discovery, risk analysis, historical replay, paper simulation, and evaluation. Built for research and paper trading only; no real-money execution or private-key handling."
+version = "1.0.0"
+id = "artifacts/meme-agent"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18351
+
+[services.development]
+run = "pnpm --filter @workspace/meme-agent run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/meme-agent", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/meme-agent/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18351"
+BASE_PATH = "/"

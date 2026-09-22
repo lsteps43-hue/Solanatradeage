@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: meme-agent
+    description: Solana meme-market intelligence and paper replay operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,109 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /agent/overview:
+    get:
+      operationId: getAgentOverview
+      tags: [meme-agent]
+      summary: Get the current agent overview
+      responses:
+        "200":
+          description: Current overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentOverview"
+  /agent/discoveries:
+    get:
+      operationId: listDiscoveries
+      tags: [meme-agent]
+      summary: List discovered tokens
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ALL, IGNORE, WATCH, INVESTIGATE, PAPER-TRADE, REVIEW]
+            default: ALL
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Discovery queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Discovery"
+  /agent/discoveries/{discoveryId}:
+    get:
+      operationId: getDiscovery
+      tags: [meme-agent]
+      summary: Get a discovery investigation
+      parameters:
+        - name: discoveryId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Discovery investigation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Discovery"
+        "404":
+          description: Discovery not found
+  /agent/replay:
+    post:
+      operationId: runReplay
+      tags: [meme-agent]
+      summary: Run a deterministic historical replay
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplayInput"
+      responses:
+        "200":
+          description: Replay results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplayResult"
+  /agent/decisions:
+    get:
+      operationId: listDecisions
+      tags: [meme-agent]
+      summary: List immutable decision log entries
+      responses:
+        "200":
+          description: Decision log
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DecisionLogEntry"
+  /agent/simulations:
+    get:
+      operationId: listSimulations
+      tags: [meme-agent]
+      summary: List paper simulations
+      responses:
+        "200":
+          description: Simulation runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Simulation"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +138,299 @@ components:
           type: string
       required:
         - status
+    Score:
+      type: object
+      properties:
+        opportunity:
+          type: number
+        risk:
+          type: number
+        confidence:
+          type: number
+      required: [opportunity, risk, confidence]
+    Evidence:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [FACT, INFERENCE, UNKNOWN]
+        label:
+          type: string
+        value:
+          type: string
+        source:
+          type: string
+      required: [type, label, value, source]
+    RiskFlag:
+      type: object
+      properties:
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        label:
+          type: string
+        detail:
+          type: string
+      required: [severity, label, detail]
+    Discovery:
+      type: object
+      properties:
+        id:
+          type: string
+        symbol:
+          type: string
+        name:
+          type: string
+        mint:
+          type: string
+        venue:
+          type: string
+        discoveredAt:
+          type: string
+        ageMinutes:
+          type: integer
+        price:
+          type: number
+        marketCap:
+          type: number
+        liquidity:
+          type: number
+        volume5m:
+          type: number
+        buys:
+          type: integer
+        sells:
+          type: integer
+        holders:
+          type: integer
+        top10Concentration:
+          type: number
+        creatorRisk:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        momentum:
+          type: number
+        status:
+          type: string
+          enum: [IGNORE, WATCH, INVESTIGATE, PAPER-TRADE, REVIEW]
+        scores:
+          $ref: "#/components/schemas/Score"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/Evidence"
+        risks:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskFlag"
+        unknowns:
+          type: array
+          items:
+            type: string
+        reasoning:
+          type: string
+        nextAction:
+          type: string
+      required:
+        - id
+        - symbol
+        - name
+        - mint
+        - venue
+        - discoveredAt
+        - ageMinutes
+        - price
+        - marketCap
+        - liquidity
+        - volume5m
+        - buys
+        - sells
+        - holders
+        - top10Concentration
+        - creatorRisk
+        - momentum
+        - status
+        - scores
+        - evidence
+        - risks
+        - unknowns
+        - reasoning
+        - nextAction
+    AgentOverview:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [PAPER, LIVE-DATA]
+        status:
+          type: string
+          enum: [RUNNING, DEGRADED, PAUSED]
+        loopStage:
+          type: string
+        lastEventAt:
+          type: string
+        latencyMs:
+          type: integer
+        discoveries:
+          type: integer
+        investigate:
+          type: integer
+        paperTrade:
+          type: integer
+        decisionsToday:
+          type: integer
+        sourceHealth:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceHealth"
+        performance:
+          $ref: "#/components/schemas/Performance"
+      required:
+        - mode
+        - status
+        - loopStage
+        - lastEventAt
+        - latencyMs
+        - discoveries
+        - investigate
+        - paperTrade
+        - decisionsToday
+        - sourceHealth
+        - performance
+    SourceHealth:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [HEALTHY, DEGRADED, OFFLINE]
+        latencyMs:
+          type: integer
+        lastChecked:
+          type: string
+      required: [name, status, latencyMs, lastChecked]
+    Performance:
+      type: object
+      properties:
+        equity:
+          type: number
+        returnPct:
+          type: number
+        winRate:
+          type: number
+        maxDrawdown:
+          type: number
+        paperTrades:
+          type: integer
+        falsePositiveRate:
+          type: number
+      required: [equity, returnPct, winRate, maxDrawdown, paperTrades, falsePositiveRate]
+    ReplayInput:
+      type: object
+      properties:
+        dataset:
+          type: string
+          enum: [DEMO_24H, DEMO_7D]
+        startingCapital:
+          type: number
+          minimum: 1
+        slippageBps:
+          type: integer
+          minimum: 0
+        feeBps:
+          type: integer
+          minimum: 0
+        latencyMs:
+          type: integer
+          minimum: 0
+      required: [dataset, startingCapital, slippageBps, feeBps, latencyMs]
+    ReplayResult:
+      type: object
+      properties:
+        runId:
+          type: string
+        dataset:
+          type: string
+        startedAt:
+          type: string
+        completedAt:
+          type: string
+        seed:
+          type: integer
+        trades:
+          type: integer
+        filled:
+          type: integer
+        partialFills:
+          type: integer
+        failures:
+          type: integer
+        endingEquity:
+          type: number
+        returnPct:
+          type: number
+        maxDrawdown:
+          type: number
+        notes:
+          type: array
+          items:
+            type: string
+      required: [runId, dataset, startedAt, completedAt, seed, trades, filled, partialFills, failures, endingEquity, returnPct, maxDrawdown, notes]
+    DecisionLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        createdAt:
+          type: string
+        discoveryId:
+          type: string
+        decision:
+          type: string
+          enum: [IGNORE, WATCH, INVESTIGATE, PAPER-TRADE, REVIEW]
+        scores:
+          $ref: "#/components/schemas/Score"
+        reasoning:
+          type: string
+        evidenceCount:
+          type: integer
+        riskCount:
+          type: integer
+        unknownCount:
+          type: integer
+        nextAction:
+          type: string
+        outcome:
+          type: string
+        predictionAccuracy:
+          type: number
+        signalPerformance:
+          type: number
+      required: [id, createdAt, discoveryId, decision, scores, reasoning, evidenceCount, riskCount, unknownCount, nextAction, outcome, predictionAccuracy, signalPerformance]
+    Simulation:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        dataset:
+          type: string
+        status:
+          type: string
+          enum: [COMPLETED, RUNNING, FAILED]
+        returnPct:
+          type: number
+        maxDrawdown:
+          type: number
+        winRate:
+          type: number
+        trades:
+          type: integer
+        capital:
+          type: number
+        createdAt:
+          type: string
+      required: [id, label, dataset, status, returnPct, maxDrawdown, winRate, trades, capital, createdAt]
 
